@@ -1,7 +1,12 @@
 #!/usr/bin/env python
+# python=3.7
+# FROM FILE: https://github.com/bburky/rsstimemachine/blob/master/rsstimemachine.py
 
-# Example usage:
-#   ./rsstimemachine.py example.com | wget --force-directories --input-file=-
+# Example usage CLI:
+#   ./rss_timemachine.py example.com | wget --force-directories --input-file=-
+# Example usage as python module
+# import rss_timemachine
+# urls = rss_timemachine.search_archive(domain)
 
 import sys
 import requests
@@ -35,10 +40,9 @@ def rss_urls_by_mimetype(domain):
     }
 
     req = requests.get(CDX_API_URL, params=params)
-
-    for line in req.content.splitlines():
+    # requests.content is 'b' but requests.text is str/unicode -- and line.split requires str not bytestring. changed for 2to3 conversion
+    for line in req.text.splitlines():
         urlkey, timestamp, original, mimetype, statuscode, digest, length = line.split(' ')
-
         if statuscode == '200':
             yield DOWNLOAD_URL_PATTERN.format(timestamp=timestamp, original=original)
 
@@ -53,12 +57,18 @@ def rss_urls_by_original_regex(domain):
 
     req = requests.get(CDX_API_URL, params=params)
 
-    for line in req.content.splitlines():
+    for line in req.text.splitlines():
         urlkey, timestamp, original, mimetype, statuscode, digest, length = line.split(' ')
 
         if statuscode == '200':
             yield DOWNLOAD_URL_PATTERN.format(timestamp=timestamp, original=original)
 
+
+def search_archive(domain):
+    urls = set()
+    urls.update(rss_urls_by_mimetype(domain))
+    urls.update(rss_urls_by_original_regex(domain))
+    return urls    
 
 if __name__ == '__main__':
     if len(sys.argv) != 2:
@@ -71,5 +81,4 @@ if __name__ == '__main__':
     urls.update(rss_urls_by_original_regex(domain))
 
     for url in urls:
-        print url
-
+        print( url )
